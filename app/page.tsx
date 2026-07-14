@@ -38,50 +38,22 @@ const INTENTS: Array<{
   {
     id: "overall",
     number: "01",
-    title: "整体了解健康状况",
-    description: "先看身体、心理、功能与社会参与的整体画像，再决定要不要加深。",
-    meta: "整体概览",
+    title: "整体评估",
+    description: "适合没有明确专项问题、希望先了解整体健康状态的人。先形成领域画像，再决定是否需要专项评估。",
+    meta: "不确定时选这个",
   },
   {
     id: "concern",
     number: "02",
-    title: "评估一个具体问题",
-    description: "睡眠、疲劳、疼痛、情绪或活动能力，直接从你关心的地方开始。",
-    meta: "专项入口",
-  },
-  {
-    id: "screening",
-    number: "03",
-    title: "规划体检与预防筛查",
-    description: "整理个人条件和既往检查，为后续匹配国际指南准备必要信息。",
-    meta: "指南路径",
-  },
-  {
-    id: "triage",
-    number: "04",
-    title: "判断是否需要就医",
-    description: "先通过最小安全门；如果可能紧急，停止普通评估并优先线下处理。",
-    meta: "安全分流",
-  },
-  {
-    id: "report",
-    number: "05",
-    title: "解读已有报告",
-    description: "围绕你已有的体检、化验、影像或医生报告组织问题与 AI 提示词。",
-    meta: "报告解读",
-  },
-  {
-    id: "tracking",
-    number: "06",
-    title: "持续追踪一个目标",
-    description: "固定同一指标和复测节奏，看变化，不重复无意义的完整基线。",
-    meta: "趋势追踪",
+    title: "专项评估",
+    description: "只适合需求已经非常明确的人，例如明确要评估睡眠、疲劳、疼痛、情绪或活动能力。",
+    meta: "需求明确时选择",
   },
 ];
 
 const INTENT_LABELS: Record<IntentId, string> = {
   overall: "整体健康概览",
-  concern: "专项问题评估",
+  concern: "专项评估",
   screening: "体检与筛查规划",
   triage: "就医安全分流",
   report: "已有报告解读",
@@ -543,16 +515,20 @@ export default function Home() {
     return (
       <>
         <div className="flow-heading">
-          <span className="section-kicker">先确认本次路径</span>
-          <h1>{intent ? INTENT_LABELS[intent] : "选择评估路径"}</h1>
-          <p>只收集会改变下一步的信息。你可以随时返回，不会被默认塞进一整套问卷。</p>
+          <span className="section-kicker">{intent === "overall" ? "整体评估" : "专项评估"}</span>
+          <h1>{intent === "overall" ? "先形成整体健康画像" : "选择一个已经明确的专项"}</h1>
+          <p>
+            {intent === "overall"
+              ? "整体评估用于发现哪些领域值得关注；它不会自动诊断疾病，结果出现信号后才会建议是否继续专项评估。"
+              : "专项评估不再做一遍整体筛查，而是直接选择与你当前明确需求相匹配的国际模型。"}
+          </p>
         </div>
 
         {(intent === "overall" || intent === "concern") && (
           <div className="setup-stack">
             {intent === "concern" && (
               <fieldset className="field-group">
-                <legend>这次最想先看哪个方面？</legend>
+                <legend>你已经明确要评估哪一个专项？</legend>
                 <div className="choice-grid compact">
                   {CONCERNS.map((item) => (
                     <button
@@ -840,7 +816,15 @@ export default function Home() {
             onClick={beginRoute}
             disabled={intent === "report" ? reportText.trim().length < 10 : intent === "unsure" ? freeText.trim().length < 4 : false}
           >
-            {intent === "triage" ? "开始安全核对" : intent === "unsure" ? "帮我选择路径" : "继续"}
+            {intent === "overall"
+              ? "开始整体评估"
+              : intent === "concern"
+                ? `进入${concernLabel}专项`
+                : intent === "triage"
+                  ? "开始安全核对"
+                  : intent === "unsure"
+                    ? "帮我选择路径"
+                    : "继续"}
             <span aria-hidden="true">→</span>
           </button>
         </div>
@@ -1269,19 +1253,41 @@ export default function Home() {
             <div className="hero-copy">
               <div className="eyebrow-row">
                 <span className="eyebrow-line" />
-                <span>不是一张万能问卷</span>
+                <span>评估入口只有两个</span>
               </div>
               <h1>
-                从你真正想解决的事
-                <span>开始评估。</span>
+                先选整体，
+                <span>或者明确专项。</span>
               </h1>
               <p>
-                先问需求，再选择整体或专项路径。每次结果只回答它能回答的问题，并清楚告诉你为什么继续、为什么停止。
+                还不确定自己要评什么，就做整体评估；已经明确只想评睡眠、疲劳、疼痛、情绪或活动能力，才进入专项评估。
               </p>
-              <div className="hero-principles" aria-label="产品原则">
-                <span>不默认全套问卷</span>
-                <span>不把低分写成疾病</span>
-                <span>不替你决定是否继续</span>
+
+              <div className="hero-entry-grid" aria-label="选择评估入口">
+                {INTENTS.map((item) => (
+                  <button
+                    className={`entry-card ${item.id === "concern" ? "entry-card-dark" : ""}`}
+                    type="button"
+                    key={item.id}
+                    onClick={() => chooseIntent(item.id)}
+                  >
+                    <div className="entry-topline">
+                      <span className="entry-number">{item.number}</span>
+                      <span className="entry-meta">{item.meta}</span>
+                    </div>
+                    <h2>{item.title}</h2>
+                    <p>{item.description}</p>
+                    <span className="entry-action">
+                      进入评估 <b aria-hidden="true">→</b>
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="hero-principles" aria-label="入口规则">
+                <span>不确定 → 整体评估</span>
+                <span>需求明确 → 专项评估</span>
+                <span>其他能力都在结果之后</span>
               </div>
             </div>
             <aside className="journey-card">
@@ -1292,73 +1298,30 @@ export default function Home() {
                 <span className="orbit-dot dot-three" />
               </div>
               <div className="journey-copy">
-                <span className="mini-label">一次个性化会话</span>
+                <span className="mini-label">一次正确的评估流程</span>
                 <ol>
-                  <li><span>01</span>先说这次需要</li>
-                  <li><span>02</span>完成最小一级评估</li>
-                  <li><span>03</span>识别 R0–R4 信号</li>
-                  <li><span>04</span>由你选择下一步</li>
+                  <li><span>01</span>选择整体或专项</li>
+                  <li><span>02</span>调用匹配的模型</li>
+                  <li><span>03</span>识别结果信号</li>
+                  <li><span>04</span>结果决定下一步</li>
                 </ol>
               </div>
             </aside>
           </section>
 
-          <section className="intent-section" aria-labelledby="intent-title">
-            <div className="section-heading">
-              <div>
-                <span className="section-kicker">第一步 · 询问需求</span>
-                <h2 id="intent-title">这次，你最想弄清什么？</h2>
-              </div>
-              <p>选最接近的一项即可，后面还会继续澄清。</p>
-            </div>
-            <div className="intent-grid">
-              {INTENTS.map((item) => (
-                <button className="intent-card" type="button" key={item.id} onClick={() => chooseIntent(item.id)}>
-                  <div className="card-topline">
-                    <span className="intent-number">{item.number}</span>
-                    <span className="intent-meta">{item.meta}</span>
-                  </div>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
-                  <span className="card-arrow" aria-hidden="true">↗</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="natural-entry">
-              <div>
-                <span className="mini-label">还不确定？</span>
-                <h3>直接用自己的话说</h3>
-                <p>不用先理解医学分类，我们只做最少的需求梳理。</p>
-              </div>
-              <div className="natural-input">
-                <textarea
-                  value={freeText}
-                  onChange={(event) => setFreeText(event.target.value)}
-                  placeholder="例如：最近睡不好又很累，不知道该先看哪方面……"
-                  aria-label="描述你的健康需求"
-                />
-                <button type="button" onClick={() => chooseIntent("unsure")} disabled={freeText.trim().length < 4}>
-                  帮我梳理
-                  <span aria-hidden="true">→</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
           <section className="safety-strip" aria-label="紧急情况提示">
             <span className="safety-icon">!</span>
             <div>
-              <strong>如果你认为情况危急或正在迅速恶化</strong>
-              <p>请立即联系所在地急救服务或尽快前往急诊，不要等待本网站完成评估。</p>
+              <strong>安全提醒不是第三个评估入口</strong>
+              <p>它会贯穿整体和专项两条路径；如果你认为情况危急或正在迅速恶化，请直接联系所在地急救服务，不要等待网页评估。</p>
             </div>
-            <button type="button" onClick={() => chooseIntent("triage")}>进入安全分流</button>
           </section>
 
           <section className="boundary-section" id="boundary">
             <div className="boundary-heading">
-              <span className="section-kicker">科学边界</span>
-              <h2>四件事，使用四套证据。</h2>
+              <span className="section-kicker">评估之后</span>
+              <h2>体检、就医、解读和追踪，都不是入口。</h2>
+              <p className="boundary-lead">它们是评估结果触发的后续输出，各自使用不同证据，不能与“开始评估”混在同一层。</p>
             </div>
             <div className="boundary-grid">
               {[
