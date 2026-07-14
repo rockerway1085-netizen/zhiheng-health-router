@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-geist-sans: "SF Pro Display", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-geist-mono: "SFMono-Regular", "Roboto Mono", monospace;
   --paper: #f3f1e9;
   --paper-deep: #e9e6dc;
   --surface: #fbfaf6;
