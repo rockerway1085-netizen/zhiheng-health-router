@@ -223,9 +223,7 @@ button:disabled {
 .entry-copy h1,
 .screen-heading h1,
 .prepare-main h1,
-.safety-card h1,
 .result-hero h1,
-.urgent-screen h1,
 .complete-screen h1 {
   margin: 11px 0 0;
   font-size: clamp(34px, 4vw, 48px);
@@ -237,9 +235,7 @@ button:disabled {
 .entry-copy p,
 .screen-heading > p,
 .prepare-lead,
-.safety-card > p,
 .result-hero > p,
-.urgent-screen > p,
 .complete-screen > p {
   margin: 17px 0 0;
   color: var(--muted);
@@ -449,9 +445,7 @@ button:disabled {
 
 .screen-heading h1,
 .prepare-main h1,
-.safety-card h1,
 .result-hero h1,
-.urgent-screen h1,
 .complete-screen h1 {
   font-size: clamp(30px, 4vw, 40px);
 }
@@ -638,7 +632,6 @@ button:disabled {
 
 .primary-button,
 .secondary-button,
-.danger-button,
 .ai-action,
 .admin-primary-button,
 .admin-ghost-button {
@@ -681,49 +674,6 @@ button:disabled {
 .admin-ghost-button:hover {
   border-color: var(--brand);
   color: var(--brand);
-}
-
-.safety-card {
-  max-width: 720px;
-  margin: 45px auto 0;
-  padding: 42px;
-  border: 1px solid var(--line);
-  border-top: 4px solid var(--brand);
-  border-radius: 18px;
-  background: var(--surface);
-  box-shadow: var(--shadow-lg);
-}
-
-.safety-card h1 {
-  max-width: 600px;
-}
-
-.safety-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 30px;
-}
-
-.danger-button {
-  border: 1px solid #e8b6ba;
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.danger-button:hover {
-  border-color: var(--danger);
-}
-
-.safety-card > small {
-  display: block;
-  margin-top: 26px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-  color: var(--muted-2);
-  font-size: 10px;
-  line-height: 1.6;
 }
 
 /* Questions */
@@ -1119,13 +1069,11 @@ button:disabled {
   box-shadow: var(--shadow-sm);
 }
 
-.urgent-screen,
 .complete-screen {
   max-width: 690px;
   text-align: center;
 }
 
-.urgent-symbol,
 .complete-mark {
   width: 64px;
   height: 64px;
@@ -1133,26 +1081,10 @@ button:disabled {
   place-items: center;
   margin: 30px auto 24px;
   border-radius: 20px;
-  color: white;
-  background: var(--danger);
-  font-size: 27px;
-  font-weight: 750;
-}
-
-.complete-mark {
   color: var(--brand-dark);
   background: var(--accent);
-}
-
-.urgent-note {
-  margin: 25px 0;
-  padding: 17px;
-  border: 1px solid #efc5c8;
-  border-radius: 11px;
-  color: #804148;
-  background: var(--danger-soft);
-  font-size: 11px;
-  line-height: 1.65;
+  font-size: 27px;
+  font-weight: 750;
 }
 
 .complete-summary {
@@ -2895,9 +2827,7 @@ button:disabled {
   .entry-copy p,
   .screen-heading > p,
   .prepare-lead,
-  .safety-card > p,
   .result-hero > p,
-  .urgent-screen > p,
   .complete-screen > p {
     font-size: 14px;
   }
@@ -2959,7 +2889,6 @@ button:disabled {
     order: initial;
   }
 
-  .safety-card,
   .question-card {
     padding: 25px 20px;
   }

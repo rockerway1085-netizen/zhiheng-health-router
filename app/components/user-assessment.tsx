@@ -14,11 +14,9 @@ type AssessmentStage =
   | "entry"
   | "specialty"
   | "prepare"
-  | "safety"
   | "questions"
   | "result"
   | "prompt"
-  | "urgent"
   | "complete";
 
 type AssessmentState = {
@@ -274,7 +272,7 @@ export default function UserAssessment({ onOpenConsole }: UserAssessmentProps) {
                   <span className="info-mark">i</span>
                   <p><strong>当前是产品流程演示。</strong>题目用于验证交互，不是正式国际量表，不会生成医疗诊断或疾病风险。</p>
                 </div>
-                <button className="primary-button" type="button" onClick={() => dispatch({ type: "GO_TO", stage: "safety" })}>我已了解，继续 <Arrow /></button>
+                <button className="primary-button" type="button" onClick={() => dispatch({ type: "GO_TO", stage: "questions" })}>开始评估 <Arrow /></button>
               </div>
               <aside className="prepare-aside">
                 <span>结果可以帮助你</span>
@@ -289,22 +287,6 @@ export default function UserAssessment({ onOpenConsole }: UserAssessmentProps) {
                   <li>替代现场检查和医生判断</li>
                 </ul>
               </aside>
-            </div>
-          </section>
-        )}
-
-        {state.stage === "safety" && (
-          <section className="tool-screen safety-screen" aria-labelledby="safety-title">
-            <button className="back-link" type="button" onClick={() => dispatch({ type: "GO_TO", stage: "prepare" })}>← 返回评估说明</button>
-            <div className="safety-card">
-              <span className="step-label">开始前的安全确认</span>
-              <h1 id="safety-title">当前情况是否可能危急，或正在迅速加重？</h1>
-              <p>如果直觉上觉得不能等，不要为了完成网页评估而等待。</p>
-              <div className="safety-actions">
-                <button className="primary-button" type="button" onClick={() => dispatch({ type: "GO_TO", stage: "questions" })}>目前稳定，开始评估 <Arrow /></button>
-                <button className="danger-button" type="button" onClick={() => dispatch({ type: "GO_TO", stage: "urgent" })}>可能危急或正在迅速加重</button>
-              </div>
-              <small>这一步只做最低限度的流程拦截，不能排除所有紧急情况。</small>
             </div>
           </section>
         )}
@@ -431,17 +413,6 @@ export default function UserAssessment({ onOpenConsole }: UserAssessmentProps) {
               <button className="primary-button" type="button" onClick={copyPrompt}>{copied ? "已复制" : "复制提示词"}</button>
               <button className="secondary-button" type="button" onClick={() => dispatch({ type: "GO_TO", stage: "complete" })}>完成本次评估</button>
             </div>
-          </section>
-        )}
-
-        {state.stage === "urgent" && (
-          <section className="tool-screen urgent-screen" aria-labelledby="urgent-title">
-            <div className="urgent-symbol" aria-hidden="true">!</div>
-            <span className="step-label">请暂停网页评估</span>
-            <h1 id="urgent-title">请立即寻求医疗帮助</h1>
-            <p>如果当前情况可能危急或正在迅速加重，请联系当地急救服务，或让身边的人协助你前往急诊。不要等待完成网页问卷。</p>
-            <div className="urgent-note">如果你无法自行求助，请尽快告诉身边可信任的人你现在的情况。</div>
-            <button className="secondary-button" type="button" onClick={() => dispatch({ type: "RESET" })}>返回首页</button>
           </section>
         )}
 

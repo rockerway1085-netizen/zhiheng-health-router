@@ -48,7 +48,10 @@ test("keeps the user tool and product console as separate product surfaces", asy
   assert.match(page, /<UserAssessment/);
   assert.match(userTool, /route: "overall"/);
   assert.match(userTool, /route: "specialty"/);
+  assert.match(userTool, /stage: "questions"/);
   assert.doesNotMatch(userTool, /type IntentId/);
+  assert.doesNotMatch(userTool, /开始前的安全确认/);
+  assert.doesNotMatch(userTool, /可能危急或正在迅速加重/);
   assert.match(consoleSource, /模型库/);
   assert.match(consoleSource, /路由规则/);
   assert.match(consoleSource, /安全规则/);
