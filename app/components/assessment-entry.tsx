@@ -42,7 +42,7 @@ export default function AssessmentEntry({
             <p>了解身体功能、睡眠、精力、情绪、疼痛、社会参与与近期变化。</p>
           </div>
           <div className="entry-route-action">
-            <span>约 8–10 分钟 · 17 个模块后台编排</span>
+            <span>PROMIS-29 领域结构 · 29 题 · 约 8–10 分钟</span>
             <button type="button" onClick={onChooseOverall}>开始整体评估 <Arrow /></button>
           </div>
         </article>
@@ -54,7 +54,7 @@ export default function AssessmentEntry({
             <p>直接评估一个具体问题，并获得针对性的解释与下一步。</p>
           </div>
           <div className="entry-route-action">
-            <span>14 个专项方向 · 通常 3–6 分钟</span>
+            <span>当前 6 个可运行专项 · 每次 13–17 题 · 约 6–10 分钟</span>
             <button className="secondary" type="button" onClick={onChooseSpecialty}>选择专项评估 <Arrow /></button>
           </div>
         </article>

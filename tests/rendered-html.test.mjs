@@ -39,9 +39,11 @@ test("server-renders the user assessment as the default surface", async () => {
 });
 
 test("keeps the consumer assessment independent from the internal console", async () => {
-  const [page, userTool, consoleSource, staticIndex, viteConfig] = await Promise.all([
+  const [page, userTool, modelRuntime, specialtyResult, consoleSource, staticIndex, viteConfig] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/user-assessment.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/assessment-models.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/specialty-result.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/admin-console.tsx", import.meta.url), "utf8"),
     readFile(new URL("../github-pages/index.html", import.meta.url), "utf8"),
     readFile(new URL("../vite.pages.config.ts", import.meta.url), "utf8"),
@@ -55,7 +57,16 @@ test("keeps the consumer assessment independent from the internal console", asyn
   assert.match(userTool, /stage: "questions"/);
   assert.match(userTool, /帮我找到专项/);
   assert.match(userTool, /ai-drawer/);
-  assert.match(userTool, /未触发紧急行动/);
+  assert.match(userTool, /补充或安全信息，不混入核心模型分/);
+  assert.match(userTool, /SpecialtyResult/);
+  assert.match(modelRuntime, /coreItems: 29/);
+  assert.match(modelRuntime, /PROMIS Sleep Disturbance 8a 架构/);
+  assert.match(modelRuntime, /WHODAS 2\.0 12 题领域架构/);
+  assert.match(modelRuntime, /safetyRule/);
+  assert.match(modelRuntime, /getVisibleQuestions/);
+  assert.match(specialtyResult, /负担分层描述的是近期影响，不等于疾病风险/);
+  assert.match(specialtyResult, /最多再推荐一个相关评估/);
+  assert.doesNotMatch(specialtyResult, /未触发紧急行动/);
   assert.doesNotMatch(userTool, /type IntentId/);
   assert.doesNotMatch(userTool, /开始前的安全确认/);
   assert.doesNotMatch(userTool, /可能危急或正在迅速加重/);

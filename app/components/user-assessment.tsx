@@ -3,13 +3,17 @@
 import { useEffect, useMemo, useReducer, useState } from "react";
 import {
   DOMAIN_META,
+  OVERALL_INSTRUMENT,
   OVERALL_QUESTIONS,
   SPECIALTIES,
+  getVisibleQuestions,
   type AssessmentQuestion,
   type AssessmentRoute,
+  type CareUrgency,
   type SpecialtyId,
-} from "../product-data";
+} from "../assessment-models";
 import AssessmentEntry from "./assessment-entry";
+import SpecialtyResult from "./specialty-result";
 
 type AssessmentStage =
   | "entry"
@@ -127,6 +131,10 @@ export default function UserAssessment() {
     };
   }, [aiOpen]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [state.questionIndex, state.stage]);
+
   const specialty = useMemo(
     () => SPECIALTIES.find((item) => item.id === state.specialtyId) ?? null,
     [state.specialtyId],
@@ -137,51 +145,102 @@ export default function UserAssessment() {
     [candidateId],
   );
 
-  const questions: AssessmentQuestion[] = useMemo(
+  const baseQuestions: AssessmentQuestion[] = useMemo(
     () => (state.route === "overall" ? OVERALL_QUESTIONS : specialty?.questions ?? []),
     [specialty, state.route],
   );
 
+  const questions = useMemo(
+    () => getVisibleQuestions(baseQuestions, state.answers),
+    [baseQuestions, state.answers],
+  );
+
   const result = useMemo(() => {
-    const domainValues = new Map<SpecialtyId, number[]>();
+    const dimensionValues = new Map<string, { label: string; domain: SpecialtyId; values: number[] }>();
     questions.forEach((question) => {
       const answer = state.answers[question.id];
-      if (answer === undefined) return;
-      const values = domainValues.get(question.domain) ?? [];
-      values.push(answer);
-      domainValues.set(question.domain, values);
+      if (answer === undefined || question.scored === false || question.section !== "core") return;
+      const current = dimensionValues.get(question.dimension) ?? {
+        label: question.dimensionLabel,
+        domain: question.domain,
+        values: [],
+      };
+      current.values.push(answer * (question.weight ?? 1));
+      dimensionValues.set(question.dimension, current);
     });
 
-    const domains = [...domainValues.entries()]
-      .map(([id, values]) => ({
+    const dimensions = [...dimensionValues.entries()]
+      .map(([id, item]) => ({
         id,
-        value: values.reduce((sum, value) => sum + value, 0) / values.length,
+        label: item.label,
+        domain: item.domain,
+        value: item.values.reduce((sum, value) => sum + value, 0) / item.values.length,
       }))
       .sort((a, b) => b.value - a.value);
 
-    const top = domains[0] ?? { id: (state.specialtyId ?? "sleep") as SpecialtyId, value: 0 };
-    const level = top.value >= 2.25 ? "high" : top.value >= 1.25 ? "attention" : "low";
-    const topName = DOMAIN_META[top.id].name;
+    const fallbackDomain = (state.specialtyId ?? "sleep") as SpecialtyId;
+    const top = dimensions[0] ?? { id: fallbackDomain, label: DOMAIN_META[fallbackDomain].name, domain: fallbackDomain, value: 0 };
+    const coreQuestions = questions.filter((question) => question.section === "core" && question.scored !== false);
+    const coreValues = coreQuestions
+      .map((question) => state.answers[question.id])
+      .filter((value): value is number => value !== undefined);
+    const burdenValue = state.route === "specialty" && coreValues.length
+      ? coreValues.reduce((sum, value) => sum + value, 0) / coreValues.length
+      : top.value;
+    const burdenScore = Math.round((burdenValue / 4) * 100);
+    const level: "low" | "attention" | "high" = burdenValue >= 2 ? "high" : burdenValue >= 1 ? "attention" : "low";
+    const topName = top.label;
     const title =
       level === "low"
         ? state.route === "overall"
           ? "整体状态相对平稳"
-          : `${topName}对近期生活的影响较轻`
+          : `你的回答显示，${specialty?.shortName ?? topName}问题目前对日常生活的影响较轻`
         : level === "high"
-          ? `${topName}是目前最需要优先处理的方面`
-          : `${topName}值得再深入了解一步`;
-    const stableCount = domains.filter((item) => item.value < 1.25).length;
-    const attentionCount = domains.length - stableCount;
+          ? state.route === "overall"
+            ? `${topName}是目前最需要优先处理的方面`
+            : `你的回答显示，${specialty?.shortName ?? topName}问题近期对日常生活的影响较明显`
+          : state.route === "overall"
+            ? `${topName}值得再深入了解一步`
+            : `你的回答显示，${specialty?.shortName ?? topName}问题近期已经影响到部分日常状态`;
+    const stableCount = dimensions.filter((item) => item.value < 1).length;
+    const attentionCount = dimensions.length - stableCount;
+    const safetySignals = questions.flatMap((question) => {
+      const answer = state.answers[question.id];
+      if (!question.safetyRule || answer === undefined || answer < question.safetyRule.atOrAbove) return [];
+      return [{ urgency: question.safetyRule.urgency, action: question.safetyRule.action }];
+    });
+    const careUrgency: CareUrgency = safetySignals.some((signal) => signal.urgency === "immediate")
+      ? "immediate"
+      : safetySignals.some((signal) => signal.urgency === "today")
+        ? "today"
+        : level === "high"
+          ? "appointment"
+          : "self-care";
 
-    return { domains, top, level, title, topName, stableCount, attentionCount };
-  }, [questions, state.answers, state.route, state.specialtyId]);
+    return {
+      dimensions,
+      top,
+      level,
+      title,
+      topName,
+      stableCount,
+      attentionCount,
+      burdenScore,
+      coreAnswered: coreValues.length,
+      coreTotal: coreQuestions.length,
+      validityStatus: coreValues.length === coreQuestions.length ? "valid" as const : "incomplete" as const,
+      safetySignals,
+      careUrgency,
+    };
+  }, [questions, specialty, state.answers, state.route, state.specialtyId]);
 
   const promptText = useMemo(() => {
-    const profile = result.domains
-      .map(({ id, value }) => `${DOMAIN_META[id].name}：${value >= 2.25 ? "影响明显" : value >= 1.25 ? "值得关注" : "影响较轻"}`)
+    const profile = result.dimensions
+      .map(({ label, value }) => `${label}：${value >= 2 ? "影响明显" : value >= 1 ? "值得关注" : "影响较轻"}`)
       .join("；");
-    return `你是一名严谨的健康信息整理助手。请根据下面的个人自报评估摘要，帮助我理解结果并准备下一步沟通。\n\n评估目标：${state.route === "overall" ? "了解近期整体健康状态" : `了解${result.topName}方面的影响`}\n回顾周期：最近两周\n领域摘要：${profile || "暂无"}\n主要发现：${result.title}\n\n请按以下结构回答：\n1. 用清楚的日常语言复述已经确认的信息；\n2. 分开列出“已知事实、可能解释、仍需补充的信息”；\n3. 给出值得继续观察和记录的项目；\n4. 帮我整理与医生或其他专业人员沟通时可补充的问题；\n5. 不诊断疾病，不虚构病因，不自行推荐药物；\n6. 如果证据不足，请直接说明无法判断。\n\n注意：这是自报健康评估摘要，不能替代病史采集、体格检查或医疗诊断。`;
-  }, [result, state.route]);
+    const instrument = state.route === "overall" ? OVERALL_INSTRUMENT : specialty?.instrument;
+    return `你是一名严谨的健康信息整理助手。请只根据下面的结构化自报评估摘要，帮助我理解结果并准备下一步沟通。\n\n评估目标：${state.route === "overall" ? "了解近期整体健康状态" : `了解${specialty?.shortName ?? result.topName}方面的影响`}\n模型架构：${instrument?.modelName ?? "未记录"}\n运行版本：${instrument?.modelVersion ?? "未记录"}\n回顾周期：${instrument?.recallPeriod ?? "未记录"}\n结果有效性：${result.validityStatus === "valid" ? "核心模型完整" : "因安全分流中断，核心模型不完整"}\n核心模型完成：${result.coreAnswered}/${result.coreTotal} 题\n模型化负担指数：${result.validityStatus === "valid" ? `${result.burdenScore}/100（不是疾病风险）` : "未输出"}\n行动等级：${result.careUrgency}\n领域摘要：${profile || "暂无"}\n主要发现：${result.validityStatus === "valid" ? result.title : result.safetySignals[0]?.action ?? "核心模型信息不足"}\n\n请按以下结构回答：\n1. 用清楚的日常语言复述已经确认的信息；\n2. 分开列出“已知事实、可能解释、仍需补充的信息”；\n3. 给出值得继续观察和记录的项目；\n4. 帮我整理与医生或其他专业人员沟通时可补充的问题；\n5. 不重新计分，不诊断疾病，不虚构病因，不自行推荐药物或检查；\n6. 如果证据不足，请直接说明无法判断。\n\n注意：这是自报健康评估摘要，不能替代病史采集、体格检查或医疗诊断。`;
+  }, [result, specialty, state.route]);
 
   async function copyPrompt() {
     try {
@@ -206,7 +265,8 @@ export default function UserAssessment() {
       { id: "sleep", pattern: /睡|失眠|夜醒|早醒|梦|困/ },
       { id: "fatigue", pattern: /累|疲|精力|没精神|乏力|恢复/ },
       { id: "pain", pattern: /痛|疼|酸|麻|不适/ },
-      { id: "mood", pattern: /情绪|焦虑|紧张|担心|低落|兴趣|压力/ },
+      { id: "anxiety", pattern: /焦虑|紧张|担心|难以放松|压力|心慌/ },
+      { id: "depression", pattern: /低落|兴趣|情绪差|没有希望|不想做事/ },
       { id: "function", pattern: /走路|活动|行动|上下楼|家务|自理|工作困难/ },
     ];
     const matched = mappings.find((item) => item.pattern.test(value));
@@ -278,7 +338,7 @@ export default function UserAssessment() {
                 <div>
                   <span>我理解你主要想了解</span>
                   <h2>{candidate.shortName}</h2>
-                  <p>{candidate.canAnswer}预计约 3 分钟。</p>
+                  <p>{candidate.canAnswer}预计 {candidate.estimatedMinutes}，共 {candidate.questionCount} 题，条件追问按回答出现。</p>
                 </div>
                 <div className="intent-actions">
                   <button className="action-primary" type="button" onClick={() => dispatch({ type: "CHOOSE_SPECIALTY", specialtyId: candidate.id })}>是的，开始评估 <Arrow /></button>
@@ -296,7 +356,7 @@ export default function UserAssessment() {
                     <strong>{item.shortName}</strong>
                     <span>{item.description}</span>
                   </span>
-                  <span className="specialty-card-meta">约 3 分钟</span>
+                  <span className="specialty-card-meta">{item.questionCount} 题 · {item.estimatedMinutes}</span>
                   <span className="specialty-arrow"><Arrow /></span>
                 </button>
               ))}
@@ -311,10 +371,16 @@ export default function UserAssessment() {
         {state.stage === "questions" && questions.length > 0 && (() => {
           const question = questions[state.questionIndex];
           const answer = state.answers[question.id];
+          const safetyTriggered = answer !== undefined
+            && question.safetyRule !== undefined
+            && answer >= question.safetyRule.atOrAbove;
           return (
             <section className="question-page" aria-labelledby="question-title">
               <div className="question-header">
-                <div><span className="section-kicker">{routeLabel}</span><small>请按第一感受作答，不需要判断原因</small></div>
+                <div>
+                  <span className="section-kicker">{routeLabel} · {question.sectionLabel}</span>
+                  <small>{question.scored === false ? "补充或安全信息，不混入核心模型分" : "核心计分项"} · {state.route === "overall" ? OVERALL_INSTRUMENT.recallPeriod : specialty?.instrument.recallPeriod}</small>
+                </div>
                 <button className="quiet-back" type="button" onClick={() => dispatch({ type: "RESET" })}>退出评估</button>
               </div>
               <Progress current={state.questionIndex + 1} total={questions.length} />
@@ -349,16 +415,27 @@ export default function UserAssessment() {
                   className="action-primary"
                   type="button"
                   disabled={answer === undefined}
-                  onClick={() => dispatch({ type: "NEXT", isLast: state.questionIndex === questions.length - 1 })}
+                  onClick={() => dispatch({ type: "NEXT", isLast: safetyTriggered || state.questionIndex === questions.length - 1 })}
                 >
-                  {state.questionIndex === questions.length - 1 ? "生成评估结果" : "下一题"} <Arrow />
+                  {safetyTriggered ? "查看优先行动" : state.questionIndex === questions.length - 1 ? "生成评估结果" : "下一题"} <Arrow />
                 </button>
               </div>
             </section>
           );
         })()}
 
-        {state.stage === "result" && (
+        {state.stage === "result" && state.route === "specialty" && specialty && (
+          <SpecialtyResult
+            specialty={specialty}
+            result={result}
+            onContinueSpecialty={(specialtyId) => dispatch({ type: "CONTINUE_SPECIALTY", specialtyId })}
+            onRetake={() => dispatch({ type: "CONTINUE_SPECIALTY", specialtyId: specialty.id })}
+            onOpenAi={() => setAiOpen(true)}
+            onExit={() => dispatch({ type: "RESET" })}
+          />
+        )}
+
+        {state.stage === "result" && state.route === "overall" && (
           <section className="report-page" aria-labelledby="result-title">
             <div className="report-heading">
               <div>
@@ -382,7 +459,7 @@ export default function UserAssessment() {
               <div className="signal-summary" aria-label="结果摘要">
                 <div><span>相对稳定</span><strong>{result.stableCount} 项</strong></div>
                 <div><span>值得关注</span><strong>{result.attentionCount} 项</strong></div>
-                <div><span>当前就医行动</span><strong>未触发紧急行动</strong></div>
+                <div><span>当前就医行动</span><strong>整体量表不判断急症</strong></div>
               </div>
             </div>
 
@@ -390,12 +467,12 @@ export default function UserAssessment() {
               <section className="report-section domain-report">
                 <div className="report-section-heading"><span>01</span><div><h2>近期状态画像</h2><p>数值只用于比较本次各领域的相对影响。</p></div></div>
                 <div className="domain-bars">
-                  {result.domains.map(({ id, value }) => {
-                    const status = value >= 2.25 ? "影响明显" : value >= 1.25 ? "值得关注" : "影响较轻";
+                  {result.dimensions.map(({ id, label, domain, value }) => {
+                    const status = value >= 2 ? "影响明显" : value >= 1 ? "值得关注" : "影响较轻";
                     return (
                       <div className="domain-bar" key={id}>
-                        <div><span><DomainGlyph id={id} /><b>{DOMAIN_META[id].name}</b></span><em>{status}</em></div>
-                        <div className="domain-track" aria-hidden="true"><span style={{ width: `${Math.max(8, (value / 3) * 100)}%`, backgroundColor: DOMAIN_META[id].color }} /></div>
+                        <div><span><DomainGlyph id={domain} /><b>{label}</b></span><em>{status}</em></div>
+                        <div className="domain-track" aria-hidden="true"><span style={{ width: `${Math.max(8, (value / 4) * 100)}%`, backgroundColor: DOMAIN_META[domain].color }} /></div>
                       </div>
                     );
                   })}
@@ -426,7 +503,7 @@ export default function UserAssessment() {
                     <p>{state.route === "overall" && result.level !== "low" ? "用更聚焦的问题了解困扰的形式、频率和生活影响。" : "本次结果没有要求你继续堆叠问卷；有明确需要时再选择专项。"}</p>
                   </div>
                   {state.route === "overall" && result.level !== "low" ? (
-                    <button className="action-primary" type="button" onClick={() => dispatch({ type: "CONTINUE_SPECIALTY", specialtyId: result.top.id })}>继续评估 <Arrow /></button>
+                    <button className="action-primary" type="button" onClick={() => dispatch({ type: "CONTINUE_SPECIALTY", specialtyId: result.top.domain })}>继续评估 <Arrow /></button>
                   ) : (
                     <button className="action-secondary" type="button" onClick={() => dispatch({ type: "RESET" })}>结束本次评估</button>
                   )}
@@ -447,8 +524,8 @@ export default function UserAssessment() {
                   <span className="plan-index">03</span>
                   <div className="plan-copy">
                     <span className="plan-status neutral">就医建议</span>
-                    <h3>{result.level === "high" ? "如影响持续，建议预约专业评估" : "本次结果未触发紧急行动"}</h3>
-                    <p>普通状态评分本身不判断急症；如出现严重不适、突然变化或持续加重，请及时升级处理。</p>
+                    <h3>{result.level === "high" ? "如影响持续，建议预约专业评估" : "普通量表分数不用于排除紧急情况"}</h3>
+                    <p>整体状态评分本身不判断急症；如出现严重不适、突然变化或持续加重，请及时升级处理。</p>
                   </div>
                   <span className="plan-state">{result.level === "high" ? "预约评估" : "继续观察"}</span>
                 </article>
