@@ -9,6 +9,7 @@ import {
   type AssessmentRoute,
   type SpecialtyId,
 } from "../product-data";
+import AssessmentEntry from "./assessment-entry";
 
 type AssessmentStage =
   | "entry"
@@ -223,64 +224,28 @@ export default function UserAssessment() {
     <div className={`health-app health-stage-${state.stage}`}>
       <header className="health-header">
         <button className="health-brand" type="button" onClick={() => dispatch({ type: "RESET" })} aria-label="返回知衡评估首页">
-          <span className="brand-mark">知衡</span>
+          <span className="brand-mark">衡</span>
           <span className="brand-copy">
-            <strong>个人健康评估</strong>
+            <strong>知衡评估</strong>
             <small>PERSONAL HEALTH ASSESSMENT</small>
           </span>
         </button>
-        {state.stage !== "entry" && (
+        {state.stage === "entry" ? (
+          <nav className="health-header-nav" aria-label="辅助导航">
+            <a href="#evidence-title">评估依据</a>
+            <a href="#privacy-note">隐私说明</a>
+          </nav>
+        ) : (
           <button className="header-exit" type="button" onClick={() => dispatch({ type: "RESET" })}>退出评估</button>
         )}
       </header>
 
       <main className="health-main">
         {state.stage === "entry" && (
-          <section className="route-entry" aria-labelledby="entry-title">
-            <div className="route-intro">
-              <span className="section-kicker">开始一次健康评估</span>
-              <h1 id="entry-title">这次，你最想了解什么？</h1>
-              <p>先看整体状态，或直接评估一个已经明确的问题。完成后，你会得到清晰结论和可选择的下一步。</p>
-            </div>
-
-            <div className="route-grid">
-              <button className="route-card route-card-overall" type="button" onClick={() => dispatch({ type: "CHOOSE_ROUTE", route: "overall" })}>
-                <span className="route-card-number">01</span>
-                <span className="route-card-copy">
-                  <span className="route-card-label">还不确定具体问题</span>
-                  <strong>做一次整体评估</strong>
-                  <span>从身体功能、精力、睡眠、情绪和疼痛五个方面，先看清近期健康全貌。</span>
-                </span>
-                <span className="domain-preview" aria-label="评估领域">
-                  {(Object.keys(DOMAIN_META) as SpecialtyId[]).map((id) => (
-                    <span key={id} style={{ color: DOMAIN_META[id].color }}>{DOMAIN_META[id].name}</span>
-                  ))}
-                </span>
-                <span className="route-card-footer"><span>约 8–10 分钟</span><b>开始整体评估 <Arrow /></b></span>
-              </button>
-
-              <button className="route-card route-card-specialty" type="button" onClick={() => dispatch({ type: "CHOOSE_ROUTE", route: "specialty" })}>
-                <span className="route-card-number">02</span>
-                <span className="route-card-copy">
-                  <span className="route-card-label">已经有明确关注点</span>
-                  <strong>直接做专项评估</strong>
-                  <span>针对睡眠、疲劳、疼痛、情绪或活动能力，直接进入更聚焦的评估。</span>
-                </span>
-                <span className="specialty-preview" aria-hidden="true">
-                  {SPECIALTIES.slice(0, 5).map((item) => (
-                    <span key={item.id}><DomainGlyph id={item.id} />{item.shortName}</span>
-                  ))}
-                </span>
-                <span className="route-card-footer"><span>通常 3–6 分钟</span><b>选择专项 <Arrow /></b></span>
-              </button>
-            </div>
-
-            <div className="route-assurance" aria-label="评估特点">
-              <span><b>按需求开始</b><small>不堆叠无关问卷</small></span>
-              <span><b>结果分层呈现</b><small>先结论，再看依据</small></span>
-              <span><b>下一步可选择</b><small>是否继续由你决定</small></span>
-            </div>
-          </section>
+          <AssessmentEntry
+            onChooseOverall={() => dispatch({ type: "CHOOSE_ROUTE", route: "overall" })}
+            onChooseSpecialty={() => dispatch({ type: "CHOOSE_ROUTE", route: "specialty" })}
+          />
         )}
 
         {state.stage === "specialty" && (
@@ -526,10 +491,16 @@ export default function UserAssessment() {
         </div>
       )}
 
-      <footer className="health-footer">
-        <span>知衡个人健康评估</span>
-        <span>评估用于个人健康管理，不替代医疗诊断</span>
-        <span>如情况危急或迅速加重，请立即联系当地急救服务</span>
+      <footer className="health-footer" id="privacy-note">
+        <span>知衡评估</span>
+        {state.stage === "entry" ? (
+          <span>评估不等于诊断 · 下一步由用户确认</span>
+        ) : (
+          <>
+            <span>评估用于个人健康管理，不替代医疗诊断</span>
+            <span>如情况危急或迅速加重，请立即联系当地急救服务</span>
+          </>
+        )}
       </footer>
     </div>
   );

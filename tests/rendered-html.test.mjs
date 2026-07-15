@@ -22,10 +22,14 @@ test("server-renders the user assessment as the default surface", async () => {
   const html = await response.text();
   assert.match(html, /<html lang="zh-CN">/i);
   assert.match(html, /<title>知衡评估｜个人健康评估工具<\/title>/i);
-  assert.match(html, /这次，你最想了解什么？/);
+  assert.match(html, /先回答你真正想了解的健康问题/);
   assert.match(html, /开始整体评估/);
-  assert.match(html, /选择专项/);
-  assert.match(html, /按需求开始/);
+  assert.match(html, /选择专项评估/);
+  assert.match(html, /17 个整体评估模块/);
+  assert.match(html, /14 个专项方向/);
+  assert.match(html, /PROMIS-29/);
+  assert.match(html, /WHODAS 2\.0/);
+  assert.match(html, /WHOQOL-BREF/);
 
   assert.doesNotMatch(html, /评估之后/);
   assert.doesNotMatch(html, /体检、就医、解读和追踪，都不是入口/);
