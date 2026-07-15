@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const title = "知衡｜个人健康导航";
-const description = "只从整体评估或明确专项评估开始，再根据结果递进生成体检、就医、解读与追踪建议。";
+const title = "知衡评估｜个人健康评估工具";
+const description = "从整体评估或一个明确的专项评估开始，逐步了解近期健康状态和下一步行动。";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       type: "website",
-      images: [{ url: imageUrl, width: 1728, height: 909, alt: "知衡只有整体评估和专项评估两个入口" }],
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: "知衡评估工具的整体评估与专项评估入口" }],
     },
     twitter: {
       card: "summary_large_image",
